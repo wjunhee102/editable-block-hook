@@ -1,17 +1,17 @@
 import { useState, useCallback } from 'react';
-import { useIdleTimer } from 'react-idle-timer';
+import { v4 } from 'uuid';
 import { checkInstanceOfHTMLElement } from './utils/checkInstanceOfElement';
 import { keyboardActionHandler } from './utils/keyboardUtils';
 import { getSelectionEnd, getSelectionStart, setSelectionRange } from './utils/selectionText';
 
-function useEditableBlock<T extends { value: string }>(initialValue: T) {
+function useEditableBlock<T extends { value: string, id: string }>(initialValue: T) {
   const [ valueList, setValueList ] = useState<T[]>([initialValue]);
   const [ stagedValue, setStatgedValue ] = useState<{ index: number; value: string } | null>(null);
   const [ cursorStart, setCursorStart ] = useState<number>(0);
   const [ cursorEnd, setCursorEnd ] = useState<number>(0);
   const [ currentIndex, setCurrentIndex ] = useState<number | null>(null);
 
-  const commitValue = () => {
+  const commitValue = useCallback(() => {
     if(!stagedValue) {
       return;
     }
@@ -25,10 +25,13 @@ function useEditableBlock<T extends { value: string }>(initialValue: T) {
     );
 
     setStatgedValue(null);
-  }
+  }, [stagedValue, valueList]);
 
   const addValueInList = useCallback((index?: number) => {
-    const newValue = {...initialValue};
+    const newValue = {
+      ...initialValue, 
+      id: v4()
+    }
     const valueListLength = valueList.length;
 
     if(index === undefined) {
@@ -65,12 +68,6 @@ function useEditableBlock<T extends { value: string }>(initialValue: T) {
       setStatgedValue({ index, value: e.target.innerHTML });
       setCursorStart(getSelectionStart(e.target));
       setCursorEnd(getSelectionEnd(e.target));
-    },
-    " ": (e: any) => {
-      setStatgedValue({ index, value: e.target.innerText });
-      setCursorStart(getSelectionStart(e.target));
-      setCursorEnd(getSelectionEnd(e.target));
-      commitValue();
     },
     Backspace: (e: any) =>{
       if(e.target.innerText.length !== (cursorStart && cursorEnd)) {
@@ -143,7 +140,7 @@ function useEditableBlock<T extends { value: string }>(initialValue: T) {
     }
   });
 
-  const editableBlockFocus = useCallback((index: number, element: HTMLDivElement | null) => {
+  const blockFocus = useCallback((index: number, element: HTMLDivElement | null) => {
     if(!checkInstanceOfHTMLElement(element)) return;
 
       setSelectionRange(element, cursorStart, cursorEnd? cursorEnd : cursorStart);
@@ -160,23 +157,19 @@ function useEditableBlock<T extends { value: string }>(initialValue: T) {
     }
   }, []);
 
-  useIdleTimer({
-    timeout: 10 * 60 * 1,
-    onIdle: commitValue,
-    debounce: 500
-  });
-
   return {
     valueList,
     setValueList,
     currentIndex,
+    commitValue,
     addValueInList,
     deleteValueInList,
     editableBlockKeyDown,
     editableBlockKeyPress,
     editableBlockKeyUp,
-    editableBlockFocus,
-    editableBlockBlur
+    blockFocus,
+    editableBlockFocus: (index: number) => (e: React.FocusEvent<HTMLDivElement>) => blockFocus(index, e.target),
+    editableBlockBlur,
   }
 }
 
