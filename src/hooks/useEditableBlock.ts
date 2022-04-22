@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { v4 } from 'uuid';
 import { checkInstanceOfHTMLElement } from './utils/checkInstanceOfElement';
 import { keyboardActionHandler } from './utils/keyboardUtils';
@@ -156,6 +156,10 @@ function useEditableBlock<T extends { value: string, id: string }>(initialValue:
       commitValue();
     }
   }, []);
+
+  useEffect(() => {
+    console.log(valueList);
+  }, [valueList]);
 
   return {
     valueList,
